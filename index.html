@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>烟台·蓬莱 5日自驾游路线图</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --c1:#E55A4E; --c2:#3B8ED0; --c3:#27A862; --c4:#E8971A; --c5:#8B5CF6;
+  --bg:#0f172a; --surface:#1e293b; --surface2:#263549;
+  --text:#e2e8f0; --muted:#94a3b8; --border:rgba(255,255,255,0.08);
+  --radius:12px;
+}
+html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Noto Sans SC',sans-serif;background:var(--bg);color:var(--text);}
+
+/* ── APP SHELL ── */
+.app{display:flex;flex-direction:column;height:100vh;}
+.app-body{display:flex;flex:1;overflow:hidden;}
+
+/* ── HEADER ── */
+.header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;z-index:100;}
+.header-left h1{font-size:15px;font-weight:700;letter-spacing:.3px;}
+.header-left p{font-size:11px;color:var(--muted);margin-top:1px;}
+.header-right{display:flex;align-items:center;gap:10px;}
+.progress-pill{font-size:11px;padding:3px 10px;border-radius:20px;background:rgba(59,142,208,.15);color:#3B8ED0;border:1px solid rgba(59,142,208,.3);}
+
+/* ── SIDEBAR ── */
+.sidebar{width:320px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+.sidebar-tabs{display:flex;padding:10px;gap:4px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.tab-btn{flex:1;padding:5px 3px;font-size:11px;border:1px solid var(--border);border-radius:7px;background:transparent;color:var(--muted);cursor:pointer;transition:all .2s;text-align:center;white-space:nowrap;}
+.tab-btn:hover{background:rgba(255,255,255,.06);}
+.tab-btn.active{color:#fff;font-weight:600;border-color:transparent;}
+.tab-all.active{background:#334155;}
+.tab-1.active{background:var(--c1);} .tab-2.active{background:var(--c2);}
+.tab-3.active{background:var(--c3);} .tab-4.active{background:var(--c4);}
+.tab-5.active{background:var(--c5);}
+.scroll-area{flex:1;overflow-y:auto;padding:6px 10px 24px;}
+.scroll-area::-webkit-scrollbar{width:3px;}
+.scroll-area::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:2px;}
+
+/* ── DAY SECTION ── */
+.day-sec{margin-bottom:4px;}
+.day-hd{display:flex;align-items:center;gap:8px;padding:8px 2px 4px;position:sticky;top:0;background:var(--surface);z-index:2;}
+.day-num{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;flex-shrink:0;}
+.day-info .d1{font-size:12px;font-weight:600;}
+.day-info .d2{font-size:10px;color:var(--muted);}
+.rain-tag{font-size:9px;padding:2px 6px;border-radius:4px;background:rgba(59,142,208,.15);color:#3B8ED0;border:1px solid rgba(59,142,208,.25);}
+/* ── WEATHER ── */
+.wx-badge{display:flex;align-items:center;gap:3px;flex-shrink:0;margin-left:auto;}
+.wx-icon{font-size:14px;line-height:1;}
+.wx-temp{font-size:10px;font-weight:600;color:var(--text);white-space:nowrap;}
+.wx-bar{display:flex;align-items:center;gap:6px;padding:3px 2px 5px 34px;flex-wrap:wrap;}
+.wx-desc{font-size:10px;color:var(--muted);}
+.wx-wind{font-size:10px;color:var(--muted);}
+.wx-wind::before{content:'·';margin-right:4px;opacity:.4;}
+.wx-tip{font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(59,142,208,.15);color:#3B8ED0;border:1px solid rgba(59,142,208,.22);}
+
+/* ── STOP ITEM ── */
+.stop{display:flex;align-items:flex-start;gap:8px;padding:5px 6px 5px 2px;border-radius:8px;cursor:pointer;transition:background .15s;}
+.stop:hover{background:rgba(255,255,255,.04);}
+.stop.done .stop-name{text-decoration:line-through;opacity:.45;}
+.stop-tl{display:flex;flex-direction:column;align-items:center;width:16px;flex-shrink:0;padding-top:5px;}
+.stop-dot{width:9px;height:9px;border-radius:50%;border:2px solid;transition:all .2s;}
+.stop-line{width:1px;background:rgba(255,255,255,.1);flex:1;min-height:14px;margin:2px 0;}
+.stop-cb{width:15px;flex-shrink:0;padding-top:5px;}
+.stop-cb input{width:14px;height:14px;cursor:pointer;accent-color:var(--c2);}
+.stop-body{flex:1;min-width:0;}
+.stop-row{display:flex;align-items:center;gap:5px;flex-wrap:wrap;}
+.type-chip{font-size:9px;padding:1px 5px;border-radius:3px;flex-shrink:0;}
+.type-attr{background:rgba(229,90,78,.18);color:#E55A4E;}
+.type-food{background:rgba(232,151,26,.18);color:#E8971A;}
+.type-snack{background:rgba(39,168,98,.18);color:#27A862;}
+.type-stay{background:rgba(139,92,246,.18);color:#8B5CF6;}
+.stop-name{font-size:12px;font-weight:500;line-height:1.35;transition:all .2s;}
+.stop-time{font-size:10px;color:var(--muted);margin-top:1px;}
+.stop-desc{font-size:10px;color:var(--muted);line-height:1.4;margin-top:2px;}
+
+/* ── SNACK PANEL (standalone block) ── */
+.snack-panel{flex-shrink:0;border-top:2px solid var(--border);}
+.snack-panel-hd{display:flex;align-items:center;gap:8px;padding:10px 12px;cursor:pointer;user-select:none;transition:background .15s;}
+.snack-panel-hd:hover{background:rgba(255,255,255,.05);}
+.snack-panel-icon{font-size:13px;}
+.snack-panel-ttl{font-size:12px;font-weight:700;flex:1;letter-spacing:.3px;}
+.snack-cnt{font-size:10px;padding:2px 8px;border-radius:20px;background:rgba(39,168,98,.15);color:#27A862;border:1px solid rgba(39,168,98,.28);font-weight:600;}
+.snack-chevron{font-size:9px;color:var(--muted);transition:transform .22s;}
+.snack-panel.collapsed .snack-chevron{transform:rotate(180deg);}
+.snack-panel-body{overflow:hidden;transition:max-height .28s ease;}
+.snack-panel.collapsed .snack-panel-body{max-height:0!important;}
+.snack-panel-inner{padding:4px 10px 12px;}
+.snack-panel-inner::-webkit-scrollbar{width:3px;}
+.snack-panel-inner::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:2px;}
+/* ── SNACK ITEMS ── */
+.snack-item{display:flex;align-items:flex-start;gap:8px;padding:8px 8px 8px 4px;border-radius:8px;cursor:pointer;transition:background .15s;border-bottom:1px solid var(--border);}
+.snack-item:last-child{border-bottom:none;}
+.snack-item:hover{background:rgba(255,255,255,.04);}
+.snack-item.done .snack-name{text-decoration:line-through;opacity:.35;}
+.snack-item.done .snack-detail,.snack-item.done .snack-dish{opacity:.35;}
+.stop-cb-inline{width:14px;height:14px;flex-shrink:0;cursor:pointer;accent-color:#27A862;margin-top:3px;}
+.snack-content{flex:1;min-width:0;}
+.snack-name-row{display:flex;align-items:center;gap:6px;margin-bottom:3px;}
+.snack-name{font-size:12px;font-weight:600;line-height:1.3;transition:all .2s;}
+.snack-area-tag{font-size:9px;padding:1px 6px;border-radius:10px;background:rgba(255,255,255,.08);color:var(--muted);flex-shrink:0;white-space:nowrap;}
+.snack-detail{font-size:10px;color:var(--muted);line-height:1.4;margin-bottom:3px;}
+.snack-dish-row{display:inline-flex;align-items:center;gap:4px;}
+.snack-dish{font-size:10px;color:#27A862;font-weight:500;background:rgba(39,168,98,.1);padding:1px 6px;border-radius:4px;}
+.snack-day-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+
+/* ── MAP ── */
+.map-wrap{flex:1;position:relative;}
+#map{width:100%;height:100%;}
+.legend{position:absolute;bottom:28px;right:10px;background:rgba(15,23,42,.88);border:1px solid var(--border);border-radius:10px;padding:10px 13px;z-index:800;min-width:120px;}
+.legend-ttl{font-size:10px;font-weight:600;color:var(--muted);margin-bottom:7px;letter-spacing:.5px;text-transform:uppercase;}
+.legend-row{display:flex;align-items:center;gap:7px;margin-bottom:5px;font-size:10px;color:var(--muted);}
+.l-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+.l-line{width:18px;height:2px;flex-shrink:0;}
+.l-dash{width:18px;height:0;border-top:2px dashed;flex-shrink:0;}
+
+/* ── POPUP ── */
+.leaflet-popup-content-wrapper{background:var(--surface)!important;color:var(--text)!important;border:1px solid var(--border)!important;border-radius:10px!important;box-shadow:0 8px 32px rgba(0,0,0,.5)!important;}
+.leaflet-popup-tip{background:var(--surface)!important;}
+.leaflet-popup-content{margin:10px 12px!important;}
+.pu-name{font-size:13px;font-weight:600;margin-bottom:3px;}
+.pu-tags{display:flex;gap:5px;margin-bottom:5px;flex-wrap:wrap;}
+.pu-tag{font-size:10px;padding:1px 6px;border-radius:4px;}
+.pu-desc{font-size:11px;color:var(--muted);line-height:1.45;}
+.pu-time{font-size:10px;color:var(--muted);margin-top:5px;padding-top:5px;border-top:1px solid var(--border);}
+
+/* ── MOBILE FLOAT TABS ── */
+.mob-tabs{display:none;position:fixed;top:52px;left:0;right:0;z-index:900;padding:7px 10px;gap:5px;overflow-x:auto;-webkit-overflow-scrolling:touch;background:rgba(15,23,42,.7);backdrop-filter:blur(10px);}
+.mob-tabs::-webkit-scrollbar{display:none;}
+.mob-tabs .tab-btn{flex-shrink:0;padding:5px 11px;font-size:11px;}
+
+/* ── MOBILE DRAWER ── */
+.drawer{display:none;position:fixed;bottom:0;left:0;right:0;z-index:1000;background:var(--surface);border-radius:16px 16px 0 0;box-shadow:0 -4px 40px rgba(0,0,0,.5);transition:transform .3s cubic-bezier(.25,.46,.45,.94);max-height:72vh;display:flex;flex-direction:column;}
+.drawer.closed{transform:translateY(calc(100% - 72px));}
+.drawer-handle-wrap{padding:8px 16px 0;cursor:pointer;flex-shrink:0;}
+.handle-bar{width:36px;height:3px;background:rgba(255,255,255,.2);border-radius:2px;margin:0 auto 7px;}
+.drawer-preview-row{display:flex;align-items:center;justify-content:space-between;padding-bottom:8px;}
+.drawer-ttl{font-size:14px;font-weight:700;}
+.drawer-prog{font-size:11px;color:var(--muted);}
+.drawer-content-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 10px 24px;overscroll-behavior:contain;}
+.drawer-content-scroll::-webkit-scrollbar{display:none;}
+/* ── DAY SECTION COLLAPSE ── */
+.day-hd{cursor:pointer;user-select:none;}
+.day-hd:hover{background:rgba(255,255,255,.03);border-radius:6px;}
+.day-chevron{font-size:10px;color:var(--muted);transition:transform .2s;margin-left:4px;}
+.day-body{overflow:hidden;transition:max-height .25s ease;}
+.day-body.collapsed{max-height:0!important;}
+
+/* ── RESPONSIVE ── */
+@media(max-width:768px){
+  .sidebar{display:none;}
+  .mob-tabs{display:flex;}
+  .drawer{display:block;}
+  .header{padding:8px 12px;}
+  .header-left h1{font-size:13px;}
+  .legend{bottom:80px;}
+}
+@media(min-width:769px){
+  .mob-tabs,.drawer{display:none!important;}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="header-left">
+      <h1>烟台·蓬莱 5日自驾游路线图</h1>
+      <p>6人1狗 · 北京出发 · 5月1—5日 · 方案二</p>
+    </div>
+    <div class="header-right">
+      <div class="progress-pill" id="hdr-prog">0/0 完成</div>
+    </div>
+  </header>
+
+  <div class="app-body">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="sidebar-tabs" id="desk-tabs">
+        <button class="tab-btn tab-all active" data-day="all">全部</button>
+        <button class="tab-btn tab-1" data-day="1">5/1</button>
+        <button class="tab-btn tab-2" data-day="2">5/2</button>
+        <button class="tab-btn tab-3" data-day="3">5/3</button>
+        <button class="tab-btn tab-4" data-day="4">5/4</button>
+        <button class="tab-btn tab-5" data-day="5">5/5</button>
+      </div>
+      <div class="scroll-area" id="desk-list"></div>
+      <!-- Standalone snack panel -->
+      <div class="snack-panel collapsed" id="desk-snack-panel">
+        <div class="snack-panel-hd" id="desk-snack-toggle">
+          <span class="snack-panel-icon">🍜</span>
+          <span class="snack-panel-ttl">小吃 / 早餐</span>
+          <span class="snack-cnt" id="desk-snack-cnt">0项</span>
+          <span class="snack-chevron">▲</span>
+        </div>
+        <div class="snack-panel-body" id="desk-snack-body" style="max-height:0">
+          <div class="snack-panel-inner" id="desk-snack-inner"></div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAP -->
+    <div class="map-wrap">
+      <div id="map"></div>
+      <div class="legend" id="legend">
+        <div class="legend-ttl">图例</div>
+        <div class="legend-row"><div class="l-dot" style="background:#E55A4E"></div>景点</div>
+        <div class="legend-row"><div class="l-dot" style="background:#E8971A"></div>餐饮</div>
+        <div class="legend-row"><div class="l-dot" style="background:#27A862"></div>小吃/美食（可点击）</div>
+        <div class="legend-row"><div class="l-dot" style="background:#8B5CF6"></div>住宿</div>
+        <div style="margin-top:7px;border-top:1px solid rgba(255,255,255,.07);padding-top:7px;">
+        <div class="legend-row"><div class="l-dash" style="border-color:#E55A4E"></div>Day1路线</div>
+        <div class="legend-row"><div class="l-dash" style="border-color:#3B8ED0"></div>Day2路线</div>
+        <div class="legend-row"><div class="l-dash" style="border-color:#27A862"></div>Day3路线</div>
+        <div class="legend-row"><div class="l-dash" style="border-color:#E8971A"></div>Day4路线</div>
+        <div class="legend-row"><div class="l-dash" style="border-color:#8B5CF6"></div>Day5路线</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MOBILE FLOATING TABS -->
+  <div class="mob-tabs" id="mob-tabs">
+    <button class="tab-btn tab-all active" data-day="all">全部</button>
+    <button class="tab-btn tab-1" data-day="1">Day1·出发</button>
+    <button class="tab-btn tab-2" data-day="2">Day2·蓬莱→烟台</button>
+    <button class="tab-btn tab-3" data-day="3">Day3·养马岛</button>
+    <button class="tab-btn tab-4" data-day="4">Day4·黄金沙滩</button>
+    <button class="tab-btn tab-5" data-day="5">Day5·返京</button>
+  </div>
+
+  <!-- MOBILE DRAWER -->
+  <div class="drawer closed" id="mob-drawer">
+    <div class="drawer-handle-wrap" id="drawer-tog">
+      <div class="handle-bar"></div>
+      <div class="drawer-preview-row">
+        <span class="drawer-ttl">行程清单</span>
+        <span class="drawer-prog" id="mob-prog">0/0 完成</span>
+      </div>
+    </div>
+    <div class="drawer-content-scroll">
+      <div id="mob-list"></div>
+      <!-- Mobile standalone snack panel -->
+      <div class="snack-panel collapsed" id="mob-snack-panel">
+        <div class="snack-panel-hd" id="mob-snack-toggle">
+          <span class="snack-panel-icon">🍜</span>
+          <span class="snack-panel-ttl">小吃 / 早餐</span>
+          <span class="snack-cnt" id="mob-snack-cnt">0项</span>
+          <span class="snack-chevron">▲</span>
+        </div>
+        <div class="snack-panel-body" id="mob-snack-body" style="max-height:0">
+          <div class="snack-panel-inner" id="mob-snack-inner"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script>
+// ═══════════════════════════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════════════════════════
+const DC = {
+  1:{color:'#E55A4E',date:'5/1',wd:'周四',theme:'北京 → 蓬莱',
+     wx:{icon:'🌤',desc:'晴转多云',temp:'8~21℃',wind:'西北风4-5级',tip:''}},
+  2:{color:'#3B8ED0',date:'5/2',wd:'周五',theme:'蓬莱 → 烟台 City Walk',
+     wx:{icon:'🌦',desc:'多云·傍晚阵雨',temp:'9~22℃',wind:'偏东转北风3-4级',tip:'有雨，带伞'}},
+  3:{color:'#27A862',date:'5/3',wd:'周六',theme:'养马岛一日游',
+     wx:{icon:'⛅',desc:'晴间多云',temp:'9~20℃',wind:'北转南风3-4级',tip:''}},
+  4:{color:'#E8971A',date:'5/4',wd:'周日',theme:'黄金沙滩 · 收官',
+     wx:{icon:'🌤',desc:'晴转多云·夜间阵雨',temp:'13~26℃',wind:'南风3-4级',tip:''}},
+  5:{color:'#8B5CF6',date:'5/5',wd:'周一',theme:'收尾返京',
+     wx:{icon:'⛅',desc:'多云',temp:'12~22℃',wind:'南风5-6级',tip:''}},
+};
+
+// type: attr=景点  food=正餐  stay=住宿  (snack items moved to SNACKS array)
+const STOPS = [
+  // ── DAY 1 ─────────────────────────────────────────────────────
+  {id:'d1_castle', day:1, seq:1, type:'attr',  name:'文成城堡',
+   coords:[37.8325,120.8728], time:'15:00', dur:'约2小时',
+   desc:'蓬莱区刘家沟镇·G206国道北，欧式巴洛克城堡，《西虹市首富》取景地，护城河环绕。', ck:true},
+  {id:'d1_stay', day:1, seq:2, type:'stay',  name:'蓬莱区住宿',
+   coords:[37.8092,120.7505],
+   desc:'蓬莱区市区，步行可达蓬莱阁景区，宠物友好。', ck:false},
+
+  // ── DAY 2 ─────────────────────────────────────────────────────
+  {id:'d2_ge', day:2, seq:1, type:'attr',  name:'蓬莱阁',
+   coords:[37.8127,120.7508], time:'09:00', dur:'约3小时',
+   desc:'国家5A，黄渤海分界线、古炮台、蓬莱阁主楼。雨天石板路意境绝佳。', ck:true},
+  {id:'d2_haiguan', day:2, seq:2, type:'attr',  name:'海关街·朝阳街 City Walk',
+   coords:[37.5465,121.3798], time:'15:00', dur:'约2.5小时',
+   desc:'百年开埠历史街区，欧式老建筑，雨天进咖啡馆随时避雨。', ck:true},
+  {id:'d2_hill', day:2, seq:3, type:'attr',  name:'烟台山公园',
+   coords:[37.5454,121.3809], time:'17:30', dur:'约1小时',
+   desc:'多国领事馆旧址、灯塔，俯瞰整个烟台港湾全景。', ck:true},
+  {id:'d2_pot', day:2, seq:4, type:'food',  name:'洪利沙锅/兴临砂锅（晚餐）',
+   coords:[37.5423,121.3952], time:'19:00',
+   desc:'雨天暖身首选，汤底浓郁，6人围坐刚好。', ck:true},
+  {id:'d2_stay', day:2, seq:5, type:'stay',  name:'烟台市区住宿（芝罘区）',
+   coords:[37.5432,121.3935],
+   desc:'芝罘区整租民宿，海关街附近，宠物友好，5/2-5/4连住。', ck:false},
+
+  // ── DAY 3 ─────────────────────────────────────────────────────
+  {id:'d3_island', day:3, seq:1, type:'attr',  name:'养马岛',
+   coords:[37.4638,121.6518], time:'10:00', dur:'全天',
+   desc:'牟平区天马路99号。海岸线骑行/徒步、礁石滩、沙滩、马场骑马。大狗天堂。', ck:true},
+  {id:'d3_lunch', day:3, seq:2, type:'food',  name:'养马岛渔家乐（午餐）',
+   coords:[37.4625,121.6495], time:'12:30',
+   desc:'当天现捞，烤扇贝、白灼虾、清蒸石斑，价高但极鲜。', ck:true},
+  {id:'d3_bbq',   day:3, seq:3, type:'food',  name:'正宗牟平烧烤·山水龙城（晚餐）',
+   coords:[37.4900,121.3613], time:'19:30',
+   desc:'牟平区通世南路·山水龙城店，养马岛回程顺路，料足火猛。', ck:true},
+
+  // ── DAY 4 ─────────────────────────────────────────────────────
+  {id:'d4_beach', day:4, seq:1, type:'attr',  name:'金沙滩海滨公园',
+   coords:[37.4832,121.5528], time:'11:00', dur:'约4小时',
+   desc:'福山区海滨路40号。国家4A，万米黄金沙滩，"中国北方第一海滩"，适合放风筝、大狗奔跑。', ck:true},
+  {id:'d4_lunch', day:4, seq:2, type:'food',  name:'李氏疙瘩汤/银丰饭店（午餐）',
+   coords:[37.5352,121.3903], time:'13:30',
+   desc:'沙滩返程途中，烟台本地经典汤饭或海鲜拼盘。', ck:true},
+  {id:'d4_bbq',   day:4, seq:3, type:'food',  name:'收官烧烤（晚餐）',
+   coords:[37.5385,121.3985], time:'19:30',
+   desc:'同裕/老宋/金桥/大嘴/家本 五选一，本地口碑好店，最后一顿。', ck:true},
+
+  // ── DAY 5 ─────────────────────────────────────────────────────
+  {id:'d5_go', day:5, seq:1, type:'attr',  name:'出发返回北京',
+   coords:[37.5422,121.3922], time:'08:30',
+   desc:'走荣乌高速→京沪高速，全程约700km，预计6-7小时。越早越好。', ck:true},
+];
+
+// ── SNACKS: comprehensive food list, shown in snack panel only (not on map)
+const SNACKS = [
+  {id:'sn1',  name:'王福禄蓬莱小面', area:'蓬莱区', dish:'蓬莱小面',
+   addr:'蓬莱区东凤凰街 / 黄海路69号42-43门市',
+   fullAddr:'中国山东省烟台市蓬莱区东凤凰街 / 黄海路69号42-43门市',
+   coords:[37.814478,120.767966]},
+  {id:'sn2',  name:'建兴蓬莱小面',   area:'蓬莱区', dish:'蓬莱小面 + 卤蛋',
+   addr:'蓬莱区南关路124号',
+   fullAddr:'中国山东省烟台市蓬莱区南关路124号',
+   coords:[37.802947,120.766206]},
+  {id:'sn3',  name:'乡府肉丁水饺',   area:'芝罘区', dish:'三鲜水饺',
+   addr:'芝罘区福来里街（近向阳街）',
+   fullAddr:'中国山东省烟台市芝罘区福来里街',
+   coords:[37.532039,121.400884]},
+  {id:'sn4',  name:'东升灌汤包',     area:'芝罘区', dish:'灌汤包',
+   addr:'芝罘区平安街47号',
+   fullAddr:'中国山东省烟台市芝罘区平安街47号',
+   coords:[37.539495,121.402053]},
+  {id:'sn5',  name:'李氏疙瘩汤',     area:'芝罘区', dish:'海鲜疙瘩汤',
+   addr:'芝罘区向阳街福来里10号',
+   fullAddr:'中国山东省烟台市芝罘区向阳街福来里10号',
+   coords:[37.532739,121.400067]},
+  {id:'sn6',  name:'本家大院',       area:'开发区', dish:'胶东家常菜',
+   addr:'福山区黄河路附近（经济技术开发区）',
+   fullAddr:'中国山东省烟台市福山区黄河路附近（经济技术开发区）',
+   coords:[37.57401,121.19748]},
+  {id:'sn7',  name:'洪利砂锅',       area:'芝罘区', dish:'排骨砂锅',
+   addr:'芝罘区新桥路',
+   fullAddr:'中国山东省烟台市芝罘区新桥路',
+   coords:[37.5516,121.35054]},
+  {id:'sn8',  name:'兴临砂锅',       area:'牟平区', dish:'牛肉砂锅',
+   addr:'牟平区宁海大街',
+   fullAddr:'中国山东省烟台市牟平区宁海大街',
+   coords:[37.39619,121.607611]},
+  {id:'sn9',  name:'广兴果园',       area:'芝罘区', dish:'苹果原汁',
+   addr:'芝罘区朝阳街80号（海关街附近）',
+   fullAddr:'中国山东省烟台市芝罘区朝阳街80号（海关街附近）',
+   coords:[37.541646,121.401851]},
+  {id:'sn10', name:'金桥烧烤',       area:'芝罘区', dish:'羊肉串',
+   addr:'芝罘区桃园里',
+   fullAddr:'中国山东省烟台市芝罘区桃园里',
+   coords:[37.55229,121.3472]},
+  {id:'sn11', name:'家本烧烤',       area:'芝罘区', dish:'五花肉',
+   addr:'芝罘区广国路13号',
+   fullAddr:'中国山东省烟台市芝罘区广国路13号',
+   coords:[37.5378,121.4069]},
+  {id:'sn12', name:'同裕烧烤',       area:'牟平区', dish:'羊排',
+   addr:'牟平区工商大街652号',
+   fullAddr:'中国山东省烟台市牟平区工商大街652号',
+   coords:[37.3908,121.5998]},
+  {id:'sn13', name:'正宗牟平烧烤',   area:'芝罘区', dish:'牟平风味烧烤',
+   addr:'芝罘区通世南路山水龙城商业街',
+   fullAddr:'中国山东省烟台市芝罘区通世南路山水龙城商业街',
+   coords:[37.48995,121.3613]},
+  {id:'sn14', name:'大嘴烧烤',       area:'牟平区', dish:'基础烤串',
+   addr:'牟平区北关大街与隆达路交叉口西100米',
+   fullAddr:'中国山东省烟台市牟平区北关大街与隆达路交叉口西100米',
+   coords:[37.39788,121.53652]},
+  {id:'sn15', name:'清泉宾馆',       area:'莱山区', dish:'🔥 海肠捞饭',
+   addr:'莱山区清泉路1号',
+   fullAddr:'中国山东省烟台市莱山区清泉路1号',
+   coords:[37.483122,121.45297]},
+  {id:'sn16', name:'银丰饭店',       area:'莱山区', dish:'海鲜拼盘',
+   addr:'莱山区港城东大街98号',
+   fullAddr:'中国山东省烟台市莱山区港城东大街98号',
+   coords:[37.464651,121.429586]},
+];
+
+const ROUTES = {
+  1:[[37.8325,120.8728],[37.8092,120.7505]],
+  2:[[37.8092,120.7505],[37.8127,120.7508],[37.5465,121.3798],[37.5454,121.3809],[37.5423,121.3952]],
+  3:[[37.5432,121.3935],[37.4638,121.6518],[37.4625,121.6495],[37.4900,121.3613]],
+  4:[[37.5432,121.3935],[37.4832,121.5528],[37.5352,121.3903],[37.5385,121.3985]],
+  5:[[37.5422,121.3922]],
+};
+
+// ═══════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════
+let checked = JSON.parse(localStorage.getItem('yt_checked')||'[]');
+let activeDay = 'all';
+let markerMap = {};
+let routeLayers = {};
+let drawerOpen = false;
+const collapsedDays = new Set(); // track which day sections are collapsed
+let snackMarkerMap = {};
+
+// ═══════════════════════════════════════════════════════════
+// MAP
+// ═══════════════════════════════════════════════════════════
+const map = L.map('map',{center:[37.62,121.1],zoom:10,zoomControl:false});
+L.control.zoom({position:'topright'}).addTo(map);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
+  attribution:'&copy; OpenStreetMap &copy; CARTO',
+  subdomains:'abcd', maxZoom:19
+}).addTo(map);
+
+// ═══════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════
+const TYPE_LABEL = {attr:'景点',food:'正餐',snack:'小吃/早餐',stay:'住宿'};
+const TYPE_CSS   = {attr:'type-attr',food:'type-food',snack:'type-snack',stay:'type-stay'};
+
+function markerColor(s){
+  if(s.type==='stay') return '#8B5CF6';
+  if(s.type==='food'||s.type==='snack') return s.type==='food'?'#E8971A':'#27A862';
+  return DC[s.day].color;
+}
+
+function mkSnackIcon(s){
+  const done=checked.includes(s.id), op=done?'0.38':'1';
+  return L.divIcon({
+    className:'',
+    html:`<div style="width:22px;height:22px;background:#27A862;border-radius:50%;border:2px solid rgba(255,255,255,.85);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.5);opacity:${op}">食</div>`,
+    iconSize:[22,22],iconAnchor:[11,11],popupAnchor:[0,-13]
+  });
+}
+
+function snackPopupHtml(s){
+  return `<div>
+    <div class="pu-name">${s.name}</div>
+    <div class="pu-tags">
+      <span class="pu-tag" style="background:rgba(39,168,98,.2);color:#27A862">小吃/美食</span>
+      <span class="pu-tag" style="background:rgba(255,255,255,.08);color:var(--muted)">${s.area}</span>
+    </div>
+    <div class="pu-desc" style="user-select:all;cursor:text">${s.fullAddr}</div>
+    <div class="pu-time" style="color:#27A862;border-color:rgba(39,168,98,.2)">推荐：${s.dish}</div>
+  </div>`;
+}
+
+function mkIcon(s){
+  const c=markerColor(s), sz=s.type==='attr'?30:24, op=checked.includes(s.id)?'0.38':'1';
+  return L.divIcon({
+    className:'',
+    html:`<div style="width:${sz}px;height:${sz}px;background:${c};border-radius:50%;border:2.5px solid rgba(255,255,255,.85);display:flex;align-items:center;justify-content:center;font-size:${sz>26?12:10}px;font-weight:800;color:#fff;box-shadow:0 2px 10px rgba(0,0,0,.55);opacity:${op}">${s.seq}</div>`,
+    iconSize:[sz,sz],iconAnchor:[sz/2,sz/2],popupAnchor:[0,-(sz/2)-4]
+  });
+}
+
+function popupHtml(s){
+  const day=DC[s.day];
+  return `<div>
+    <div class="pu-name">${s.name}</div>
+    <div class="pu-tags">
+      <span class="pu-tag ${TYPE_CSS[s.type]}">${TYPE_LABEL[s.type]}</span>
+      <span class="pu-tag" style="background:${day.color}22;color:${day.color}">Day${s.day}·${day.date}</span>
+    </div>
+    <div class="pu-desc">${s.desc}</div>
+    ${s.time?`<div class="pu-time">${s.time}${s.dur?' · '+s.dur:''}</div>`:''}
+  </div>`;
+}
+
+function saveChecked(){ localStorage.setItem('yt_checked',JSON.stringify(checked)); }
+
+function getProgress(){
+  const ckStops=STOPS.filter(s=>s.ck);
+  const total=ckStops.length+SNACKS.length;
+  const done=ckStops.filter(s=>checked.includes(s.id)).length
+            +SNACKS.filter(s=>checked.includes(s.id)).length;
+  return {total, done};
+}
+
+// ═══════════════════════════════════════════════════════════
+// RENDER MAP
+// ═══════════════════════════════════════════════════════════
+function renderMap(){
+  Object.values(markerMap).forEach(m=>map.removeLayer(m)); markerMap={};
+  Object.values(routeLayers).forEach(r=>map.removeLayer(r)); routeLayers={};
+
+  const days = activeDay==='all'?[1,2,3,4,5]:[+activeDay];
+
+  days.forEach(d=>{
+    if(ROUTES[d]&&ROUTES[d].length>1){
+      routeLayers[d]=L.polyline(ROUTES[d],{color:DC[d].color,weight:2.5,opacity:.7,dashArray:'7,5'}).addTo(map);
+    }
+    STOPS.filter(s=>s.day===d).forEach(s=>{
+      const m=L.marker(s.coords,{icon:mkIcon(s)}).addTo(map)
+        .bindPopup(popupHtml(s),{closeButton:false,maxWidth:220,className:'',minWidth:180});
+      m.on('click',()=>{ scrollToStop(s.id); });
+      markerMap[s.id]=m;
+    });
+  });
+
+  // Snack markers — always show all, regardless of day filter
+  Object.values(snackMarkerMap).forEach(m=>map.removeLayer(m)); snackMarkerMap={};
+  SNACKS.forEach(s=>{
+    const m=L.marker(s.coords,{icon:mkSnackIcon(s)}).addTo(map)
+      .bindPopup(snackPopupHtml(s),{closeButton:false,maxWidth:220,minWidth:180});
+    snackMarkerMap[s.id]=m;
+  });
+
+  // Fit bounds
+  const pts=STOPS.filter(s=>days.includes(s.day)).map(s=>s.coords);
+  if(pts.length) try{ map.fitBounds(L.latLngBounds(pts).pad(activeDay==='all'?.12:.3)); }catch(e){}
+}
+
+// ═══════════════════════════════════════════════════════════
+// RENDER LIST
+// ═══════════════════════════════════════════════════════════
+function renderList(containerId){
+  const el=document.getElementById(containerId);
+  if(!el) return;
+  const days=activeDay==='all'?[1,2,3,4,5]:[+activeDay];
+  let h='';
+  days.forEach(d=>{
+    const day=DC[d];
+    const mainStops=STOPS.filter(s=>s.day===d && s.type!=='snack');
+    const isCollapsed=collapsedDays.has(d);
+    h+=`<div class="day-sec" data-day="${d}">
+      <div class="day-hd" onclick="toggleDaySec(${d})">
+        <div class="day-num" style="background:${day.color}">${d}</div>
+        <div class="day-info">
+          <div class="d1">${day.date}（${day.wd}）</div>
+          <div class="d2">${day.theme}</div>
+        </div>
+        <div class="wx-badge">
+          <span class="wx-icon">${day.wx.icon}</span>
+          <span class="wx-temp">${day.wx.temp}</span>
+        </div>
+        <span class="day-chevron" style="transform:rotate(${isCollapsed?180:0}deg)">▾</span>
+      </div>
+      <div class="wx-bar" style="${isCollapsed?'display:none':''}">
+        <span class="wx-desc">${day.wx.desc}</span>
+        <span class="wx-wind">${day.wx.wind}</span>
+        ${day.wx.tip?`<span class="wx-tip">${day.wx.tip}</span>`:''}
+      </div>
+      <div class="day-body ${isCollapsed?'collapsed':''}" style="max-height:${isCollapsed?'0':'2000px'}">`;
+    mainStops.forEach((s,i)=>{
+      const done=checked.includes(s.id), isLast=i===mainStops.length-1;
+      h+=`<div class="stop ${done?'done':''}" data-sid="${s.id}">
+        <div class="stop-tl">
+          <div class="stop-dot" style="border-color:${day.color};background:${done?day.color:'transparent'}"></div>
+          ${!isLast?'<div class="stop-line"></div>':''}
+        </div>
+        <div class="stop-cb">${s.ck?`<input type="checkbox" class="ck-input" ${done?'checked':''} data-sid="${s.id}"/>`:'&nbsp;'}</div>
+        <div class="stop-body">
+          <div class="stop-row">
+            <span class="type-chip ${TYPE_CSS[s.type]}">${TYPE_LABEL[s.type]}</span>
+            <span class="stop-name">${s.name}</span>
+          </div>
+          ${s.time?`<div class="stop-time">${s.time}${s.dur?' · '+s.dur:''}</div>`:''}
+          <div class="stop-desc">${s.desc}</div>
+        </div>
+      </div>`;
+    });
+    h+=`</div></div>`;
+  });
+  el.innerHTML=h;
+}
+
+function toggleDaySec(d){
+  if(collapsedDays.has(d)) collapsedDays.delete(d);
+  else collapsedDays.add(d);
+  renderList('desk-list');
+  renderList('mob-list');
+}
+
+// ═══════════════════════════════════════════════════════════
+// RENDER SNACK PANEL
+// ═══════════════════════════════════════════════════════════
+function renderSnackPanel(innerId, cntId){
+  const inner=document.getElementById(innerId);
+  const cntEl=document.getElementById(cntId);
+  if(!inner) return;
+  if(cntEl) cntEl.textContent=SNACKS.length+'项';
+  const h=SNACKS.map(s=>{
+    const done=checked.includes(s.id);
+    return `<div class="snack-item ${done?'done':''}" data-sid="${s.id}">
+      <input type="checkbox" class="ck-input" ${done?'checked':''} data-sid="${s.id}" title="标记完成"/>
+      <div class="snack-content">
+        <div class="snack-name-row">
+          <span class="snack-name">${s.name}</span>
+          <span class="snack-area-tag">${s.area}</span>
+        </div>
+        <div class="snack-detail">${s.addr}</div>
+        <span class="snack-dish">🍽 ${s.dish}</span>
+      </div>
+    </div>`;
+  }).join('');
+  inner.innerHTML=h;
+}
+
+function wireSnackPanel(innerId){
+  const inner=document.getElementById(innerId);
+  if(!inner||inner.dataset.wired) return;
+  inner.dataset.wired='1';
+  inner.addEventListener('click',e=>{
+    if(e.target.tagName==='INPUT') return;
+    const item=e.target.closest('[data-sid]');
+    if(!item) return;
+    const sid=item.dataset.sid;
+    panToItem(sid);
+  });
+}
+
+function panToItem(sid){
+  const s=STOPS.find(x=>x.id===sid);
+  if(s&&markerMap[sid]){ map.flyTo(s.coords,13,{duration:1}); setTimeout(()=>markerMap[sid].openPopup(),900); return; }
+  const sn=SNACKS.find(x=>x.id===sid);
+  if(sn&&snackMarkerMap[sid]){ map.flyTo(sn.coords,15,{duration:1}); setTimeout(()=>snackMarkerMap[sid].openPopup(),900); }
+}
+
+function initSnackToggle(panelId, toggleId, bodyId){
+  const panel=document.getElementById(panelId);
+  const body=document.getElementById(bodyId);
+  if(!panel||!body) return;
+  document.getElementById(toggleId).addEventListener('click',()=>{
+    const collapsed=panel.classList.toggle('collapsed');
+    body.style.maxHeight=collapsed?'0':(body.scrollHeight||400)+'px';
+    // recalc after render
+    if(!collapsed) setTimeout(()=>{ body.style.maxHeight=body.scrollHeight+'px'; },10);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// EVENTS — single delegation, wired ONCE per container
+// ═══════════════════════════════════════════════════════════
+
+function wireContainer(containerId){
+  const el=document.getElementById(containerId);
+  if(!el||el.dataset.wired) return;
+  el.dataset.wired='1';
+  // 'change' fires after native checkbox toggle — most reliable
+  el.addEventListener('change',e=>{
+    const cb=e.target;
+    if(!cb.classList.contains('ck-input')) return;
+    const sid=cb.dataset.sid; if(!sid) return;
+    if(cb.checked && !checked.includes(sid)) checked.push(sid);
+    else if(!cb.checked) checked=checked.filter(x=>x!==sid);
+    saveChecked();
+    const isDone=cb.checked;
+    document.querySelectorAll('.stop[data-sid="'+sid+'"],.snack-item[data-sid="'+sid+'"]')
+      .forEach(r=>r.classList.toggle('done',isDone));
+    document.querySelectorAll('input.ck-input[data-sid="'+sid+'"]')
+      .forEach(c=>{ c.checked=isDone; });
+    document.querySelectorAll('.stop[data-sid="'+sid+'"] .stop-dot')
+      .forEach(dot=>{ const s=STOPS.find(x=>x.id===sid); dot.style.background=isDone?DC[s.day].color:'transparent'; });
+    if(markerMap[sid]){ const s=STOPS.find(x=>x.id===sid); if(s) markerMap[sid].setIcon(mkIcon(s)); }
+    updateProgress();
+  });
+  el.addEventListener('click',e=>{
+    if(e.target.classList.contains('ck-input')) return;
+    const row=e.target.closest('[data-sid]');
+    if(!row) return;
+    const sid=row.dataset.sid;
+    const s=STOPS.find(x=>x.id===sid);
+    if(s&&markerMap[sid]){ map.flyTo(s.coords,14,{duration:1}); setTimeout(()=>markerMap[sid].openPopup(),900); return; }
+    const sn=SNACKS.find(x=>x.id===sid);
+    if(sn&&snackMarkerMap[sid]){ map.flyTo(sn.coords,16,{duration:1}); setTimeout(()=>snackMarkerMap[sid].openPopup(),900); }
+  });
+}
+
+function wireList(id){ wireContainer(id); }
+function wireSnackPanel(id){ wireContainer(id); }
+
+function UNUSED_onCheckClick(el, sid){
+  if(checked.includes(sid)) checked=checked.filter(x=>x!==sid);
+  else checked.push(sid);
+  saveChecked();
+  // Update UI without full re-render: just toggle classes and marker
+  document.querySelectorAll(`[data-sid="${sid}"]`).forEach(row=>{
+    if(row.tagName!=='INPUT') row.classList.toggle('done', checked.includes(sid));
+  });
+  document.querySelectorAll(`input[data-sid="${sid}"]`).forEach(cb=>{ cb.checked=checked.includes(sid); });
+  document.querySelectorAll(`.stop-dot`).forEach(dot=>{
+    const row=dot.closest('[data-sid]');
+    if(row&&row.dataset.sid===sid){
+      const s=STOPS.find(x=>x.id===sid);
+      dot.style.background=checked.includes(sid)?DC[s.day].color:'transparent';
+    }
+  });
+  if(markerMap[sid]){ const s=STOPS.find(x=>x.id===sid); if(s) markerMap[sid].setIcon(mkIcon(s)); }
+  if(snackMarkerMap[sid]){ const sn=SNACKS.find(x=>x.id===sid); if(sn) snackMarkerMap[sid].setIcon(mkSnackIcon(sn)); }
+  updateProgress();
+}
+
+// Row click to pan map — wired once per container
+function wireList(containerId){
+  const el=document.getElementById(containerId);
+  if(!el||el.dataset.wired) return;
+  el.dataset.wired='1';
+  el.addEventListener('click',e=>{
+    if(e.target.tagName==='INPUT') return; // handled by onCheckClick
+    const stopEl=e.target.closest('[data-sid]');
+    if(!stopEl) return;
+    const sid=stopEl.dataset.sid;
+    const s=STOPS.find(x=>x.id===sid);
+    if(s&&markerMap[sid]){
+      map.flyTo(s.coords,13,{duration:1});
+      setTimeout(()=>markerMap[sid].openPopup(),900);
+    }
+  });
+}
+
+// Scroll sidebar to stop
+function scrollToStop(sid){
+  ['desk-list','mob-list'].forEach(cid=>{
+    const el=document.getElementById(cid);
+    if(!el) return;
+    const item=el.querySelector(`[data-sid="${sid}"]`);
+    if(item) item.scrollIntoView({behavior:'smooth',block:'center'});
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// PROGRESS
+// ═══════════════════════════════════════════════════════════
+function updateProgress(){
+  const {total,done}=getProgress(), pct=total?Math.round(done/total*100):0;
+  const hp=document.getElementById('hdr-prog'); if(hp) hp.textContent=`${done}/${total} 完成`;
+  const mp=document.getElementById('mob-prog'); if(mp) mp.textContent=`${done}/${total} 完成`;
+}
+
+// ═══════════════════════════════════════════════════════════
+// DAY FILTER
+// ═══════════════════════════════════════════════════════════
+function setDay(day){
+  activeDay=day;
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.day===day));
+  updateAll(true);
+}
+
+document.querySelectorAll('.tab-btn').forEach(b=>b.addEventListener('click',()=>setDay(b.dataset.day)));
+
+// ═══════════════════════════════════════════════════════════
+// MOBILE DRAWER
+// ═══════════════════════════════════════════════════════════
+const drawer=document.getElementById('mob-drawer');
+const drawerHandle=document.getElementById('drawer-tog');
+drawerHandle.addEventListener('click',()=>{
+  drawerOpen=!drawerOpen;
+  drawer.classList.toggle('closed',!drawerOpen);
+});
+// Only intercept drag on the handle — not on the scrollable content
+let ty0=0;
+drawerHandle.addEventListener('touchstart',e=>{ty0=e.touches[0].clientY;},{passive:true});
+drawerHandle.addEventListener('touchmove',e=>{
+  const dy=e.touches[0].clientY-ty0;
+  if(dy>50){drawerOpen=false;drawer.classList.add('closed');}
+  else if(dy<-50){drawerOpen=true;drawer.classList.remove('closed');}
+},{passive:true});
+
+// ═══════════════════════════════════════════════════════════
+// UPDATE ALL
+// ═══════════════════════════════════════════════════════════
+function updateAll(remapMarkers){
+  if(remapMarkers) renderMap();
+  else{ Object.keys(markerMap).forEach(sid=>{const s=STOPS.find(x=>x.id===sid);if(s) markerMap[sid].setIcon(mkIcon(s));}); }
+  renderList('desk-list');
+  renderList('mob-list');
+  renderSnackPanel('desk-snack-inner','desk-snack-cnt');
+  renderSnackPanel('mob-snack-inner','mob-snack-cnt');
+  updateProgress();
+  // Wire ONCE — data-wired guard prevents duplicate listeners
+  wireList('desk-list');
+  wireList('mob-list');
+  wireSnackPanel('desk-snack-inner');
+  wireSnackPanel('mob-snack-inner');
+  // Recalc snack body heights if open
+  ['desk-snack-panel','mob-snack-panel'].forEach(pid=>{
+    const panel=document.getElementById(pid);
+    if(!panel||panel.classList.contains('collapsed')) return;
+    const body=panel.querySelector('.snack-panel-body');
+    if(body) body.style.maxHeight=body.scrollHeight+'px';
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════
+initSnackToggle('desk-snack-panel','desk-snack-toggle','desk-snack-body');
+initSnackToggle('mob-snack-panel','mob-snack-toggle','mob-snack-body');
+updateAll(true);
+</script>
+</body>
+</html>
