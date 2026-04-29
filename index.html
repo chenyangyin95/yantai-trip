@@ -24,7 +24,6 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
 .header-left h1{font-size:15px;font-weight:700;letter-spacing:.3px;}
 .header-left p{font-size:11px;color:var(--muted);margin-top:1px;}
 .header-right{display:flex;align-items:center;gap:10px;}
-.progress-pill{font-size:11px;padding:3px 10px;border-radius:20px;background:rgba(59,142,208,.15);color:#3B8ED0;border:1px solid rgba(59,142,208,.3);}
 
 /* ── SIDEBAR ── */
 .sidebar{width:320px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
@@ -139,7 +138,6 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
 .handle-bar{width:36px;height:3px;background:rgba(255,255,255,.2);border-radius:2px;margin:0 auto 7px;}
 .drawer-preview-row{display:flex;align-items:center;justify-content:space-between;padding-bottom:8px;}
 .drawer-ttl{font-size:14px;font-weight:700;}
-.drawer-prog{font-size:11px;color:var(--muted);}
 .drawer-content-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 10px 24px;overscroll-behavior:contain;}
 .drawer-content-scroll::-webkit-scrollbar{display:none;}
 /* ── DAY SECTION COLLAPSE ── */
@@ -173,7 +171,6 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
       <p>6人1狗 · 北京出发 · 5月1—5日 · 方案二</p>
     </div>
     <div class="header-right">
-      <div class="progress-pill" id="hdr-prog">0/0 完成</div>
     </div>
   </header>
 
@@ -239,7 +236,6 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
       <div class="handle-bar"></div>
       <div class="drawer-preview-row">
         <span class="drawer-ttl">行程清单</span>
-        <span class="drawer-prog" id="mob-prog">0/0 完成</span>
       </div>
     </div>
     <div class="drawer-content-scroll">
